@@ -1,7 +1,3 @@
-/*
- * matrix.cpp
- */
-
 #include <stdexcept>
 #include "matrix.h"
 
@@ -83,25 +79,6 @@ Matrix& Matrix::operator=(const Matrix& m)
     return *this;
 }
 
-Matrix& Matrix::operator+=(const Matrix& m)
-{
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] += m.p[i][j];
-        }
-    }
-    return *this;
-}
-
-Matrix& Matrix::operator-=(const Matrix& m)
-{
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] -= m.p[i][j];
-        }
-    }
-    return *this;
-}
 
 Matrix& Matrix::operator*=(const Matrix& m)
 {
@@ -116,15 +93,6 @@ Matrix& Matrix::operator*=(const Matrix& m)
     return (*this = temp);
 }
 
-Matrix& Matrix::operator*=(double num)
-{
-    for (int i = 0; i < rows_; ++i) {
-        for (int j = 0; j < cols_; ++j) {
-            p[i][j] *= num;
-        }
-    }
-    return *this;
-}
 
 Matrix& Matrix::operator/=(double num)
 {
@@ -135,24 +103,6 @@ Matrix& Matrix::operator/=(double num)
     }
     return *this;
 }
-
-
-bool Matrix::operator==(const Matrix& that){
-    if(this->rows_ != that.rows_ || this->cols_ != that.cols_)
-        throw std::string("dimention error!");
-
-    for (int i = 0; i < this->rows_; i++)
-        for (int j = 0; j < this->cols_; j++)
-            if(this->p[i][j] != that.p[i][j])
-                return false;
-
-    return true;
-}
-
-bool Matrix::operator!=(const Matrix& that){
-    return !( (*this) == that );
-}
-
 
 /* STATIC CLASS FUNCTIONS
  ********************************/
@@ -196,60 +146,8 @@ void Matrix::allocSpace()
 
 /* NON-MEMBER FUNCTIONS
  ********************************/
-
-Matrix operator+(const Matrix& m1, const Matrix& m2)
-{
-    Matrix temp(m1);
-    return (temp += m2);
-}
-
-Matrix operator-(const Matrix& m1, const Matrix& m2)
-{
-    Matrix temp(m1);
-    return (temp -= m2);
-}
-
 Matrix operator*(const Matrix& m1, const Matrix& m2)
 {
     Matrix temp(m1);
     return (temp *= m2);
-}
-
-Matrix operator*(const Matrix& m, double num)
-{
-    Matrix temp(m);
-    return (temp *= num);
-}
-
-Matrix operator*(double num, const Matrix& m)
-{
-    return (m * num);
-}
-
-Matrix operator/(const Matrix& m, double num)
-{
-    Matrix temp(m);
-    return (temp /= num);
-}
-
-ostream& operator<<(ostream& os, const Matrix& m)
-{
-    for (int i = 0; i < m.rows_; ++i) {
-        os << m.p[i][0];
-        for (int j = 1; j < m.cols_; ++j) {
-            os << " " << m.p[i][j];
-        }
-        os << endl;
-    }
-    return os;
-}
-
-istream& operator>>(istream& is, Matrix& m)
-{
-    for (int i = 0; i < m.rows_; ++i) {
-        for (int j = 0; j < m.cols_; ++j) {
-            is >> m.p[i][j];
-        }
-    }
-    return is;
 }
