@@ -1,6 +1,10 @@
 #include "Object.cpp"
+#include "bitmap_image.hpp"
 
 using namespace std;
+
+extern vector<Object*> objects;
+extern vector<Vector3> lights;
 
 void move_up(double step);
 void move_down(double step);
@@ -19,19 +23,20 @@ void tilt(double angle);
 
 Vector3 pos, u, r, l;
 
-vector<Object*> objects;
-vector<Vector3> lights;
+int imageWidth, imageHeight;
+int windowWidth = 500, windowHeight = 500;
+int recursion_level = 3;
+double viewAngleDeg = 90;
 
 void getInput() {
     ifstream fin("description.txt");
 
-    int recursion_level;
     fin >> recursion_level;
     cout << "level of recursion : " << recursion_level << endl;
 
-    int pixels;
-    fin >> pixels;
-    cout << "pixels : " << pixels << endl;
+    fin >> imageWidth;
+    cout << "pixels : " << imageWidth << endl;
+    imageHeight = imageWidth;
 
     int n_obj;
     fin >> n_obj;
@@ -41,12 +46,12 @@ void getInput() {
     // fin >> s; // dummy to avoid new line
 
     // Floor
-    Object* floor = new Floor(300, 30);
-    objects.push_back(floor);
+
+    // TODO: floor not implemented yet!
+    // Object* floor = new Floor(600, 30);
+    // objects.push_back(floor);
 
     for (int i = 0; i < n_obj; i++) {
-        cout << "in obj" << endl;
-
         string name;
         // fin >> name; // dummy to avoid new line
         fin >> name;
@@ -81,7 +86,6 @@ void getInput() {
             objects.push_back(temp);
 
         } else if (name == string("pyramid")) {
-            cout << "in pyramid" << endl;
 
             double c[3];
             fin >> c[0] >> c[1] >> c[2];
@@ -133,11 +137,12 @@ void getInput() {
             triangle3->setExponent(k);
             triangle4->setExponent(k);
 
-            objects.push_back(base);
-            objects.push_back(triangle1);
-            objects.push_back(triangle2);
-            objects.push_back(triangle3);
-            objects.push_back(triangle4);
+            // TODO: pyramid not implemented yet!
+            // objects.push_back(base);
+            // objects.push_back(triangle1);
+            // objects.push_back(triangle2);
+            // objects.push_back(triangle3);
+            // objects.push_back(triangle4);
         }
 
         // fin >> name; // dummy to avoid new line
@@ -158,22 +163,61 @@ void getInput() {
     fin.close();
 }
 
-pair<int, double> getNearestObject(const Ray& ray) {
-    int nearest  = -1;
-    double t_min = INT32_MAX;
+pair<int, double> getNearest_index_t(const Ray& ray,
+                                     const vector<Object*>& objects) {
+    int min_index = -1;
+    double min_t  = 9999999;
 
     for (int k = 0; k < objects.size(); k++) {
         double tk = objects[k]->t_intersection(ray);
 
+        // cout << "intersect tk = " << tk << endl;
+
         if (tk <= 0.0)
             continue;
-        else if (tk < t_min) {
-            t_min   = tk;
-            nearest = k;
+        else if (tk < min_t) {
+            min_t     = tk;
+            min_index = k;
         }
     }
 
-    return make_pair(nearest, t_min);
+    return make_pair(min_index, min_t);
+}
+
+void capture() {
+    double viewAngle     = DEGtoRAD(viewAngleDeg);
+    double planeDistance = (windowHeight / 2) / tan(viewAngle / 2);
+
+    Vector3 topLeft = pos + (l * planeDistance - r * (windowWidth / 2) +
+                             u * (windowHeight / 2));
+
+    double du = (windowWidth * 1.0) / imageWidth;
+    double dv = (windowHeight * 1.0) / imageHeight;
+
+    bitmap_image image(imageWidth, imageHeight);
+
+    for (int i = 0; i < imageWidth; i++) {
+        for (int j = 0; j < imageHeight; j++) {
+            Vector3 dir = topLeft + r * i * du - u * j * dv;
+
+            Ray ray(pos, dir - pos);
+            double dummy_color[3] = {0.0, 0.0, 0.0};
+
+            pair<double, double> pair = getNearest_index_t(ray, objects);
+            int near_index = pair.first;
+            double near_t  = pair.second;
+
+            if (near_index != -1) {
+                objects[near_index]->getColor(ray, near_t, dummy_color,
+                                              recursion_level);
+            }
+
+            image.set_pixel(i, j, dummy_color[0] * 255, dummy_color[1] * 255,
+                            dummy_color[2] * 255);
+        }
+    }
+
+    image.save_image("out.bmp");
 }
 
 void keyboardListener(unsigned char key, int x, int y) {
@@ -196,9 +240,8 @@ void keyboardListener(unsigned char key, int x, int y) {
     case '6':
         tilt(-3);
         break;
-    case '+':
-        break;
-    case '-':
+    case '0':
+        capture();
         break;
     default:
         break;
@@ -330,30 +373,34 @@ void init() {
     glLoadIdentity();
 
     // give PERSPECTIVE parameters
-    gluPerspective(90, 1, 1, 1000.0);
+    gluPerspective(viewAngleDeg, 1, 1, 1000.0);
     // field of view in the Y (vertically)
     // aspect ratio that determines the field of view in the X direction
     // (horizontally)
     // near distance
     // far distance
 
+    // pos = Vector3(0, -200, 30);
+    // l   = Vector3(0.0, 1.0, 0.0);
+    // r   = Vector3(1.0, 0.0, 0.0);
+    // u   = Vector3(0.0, 0.0, 1.0);
     pos = Vector3(100, 100, 0);
     l   = Vector3(-1 / sqrt(2), -1 / sqrt(2), 0);
     r   = Vector3(-1 / sqrt(2), 1 / sqrt(2), 0);
     u   = Vector3(0, 0, 1);
 
-    move_up(100);
-    look_down(30);
+    //    move_up(50);
+    //    look_down(20);
 }
 
 int main(int argc, char** argv) {
     glutInit(&argc, argv);
-    glutInitWindowSize(500, 500);
+    glutInitWindowSize(windowHeight, windowWidth);
     glutInitWindowPosition(0, 0);
     glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE |
                         GLUT_RGB); // Depth, Double buffer, RGB color
 
-    glutCreateWindow("Sphere To Cube With Fully Rotatable Camera");
+    glutCreateWindow("Ray Tracing");
 
     init();
 

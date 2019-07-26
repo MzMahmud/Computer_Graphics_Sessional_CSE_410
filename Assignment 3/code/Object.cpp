@@ -1,14 +1,22 @@
 #include "Vector3.cpp"
 #include <GL/glut.h>
+#define EPSILON 0.000001
+
+class Ray;
+class Object;
+
+pair<int, double> getNearest_index_t(const Ray& ray,
+                                     const vector<Object*>& objects);
+
+vector<Object*> objects;
+vector<Vector3> lights;
 
 class Ray {
   public:
     Vector3 start, dir;
-
     Ray(Vector3 _start, Vector3 _dir) {
         start = _start;
-        dir   = _dir;
-        dir.normalize();
+        dir   = _dir.normalize();
     }
 };
 
@@ -46,6 +54,13 @@ ColorRGB operator+(const ColorRGB& a, const ColorRGB& b) {
     return temp += b;
 }
 
+void clip(double& value, double min_val, double max_val) {
+    if (value < min_val)
+        value = min_val;
+    if (value > max_val)
+        value = max_val;
+}
+
 class Object {
   public:
     ColorRGB color;
@@ -72,6 +87,73 @@ class Object {
     Vector3 reflectedRayDirection(const Ray& ray, Vector3 normal) {
         Vector3 ref = ray.dir - normal * 2.0 * ray.dir.dot(normal);
         return ref.normalize();
+    }
+
+    void getColor(Ray& ray, double t, double current_color[3], int level) {
+
+        Vector3 point      = ray.start + ray.dir * t;
+        Vector3 normal     = getNormal(point);
+        Vector3 reflection = reflectedRayDirection(ray, normal);
+
+        for (int i = 0; i < lights.size(); i++) {
+
+            double lambert = 0.0, phong = 0.0;
+
+            Vector3 dir = (lights[i] - point).normalize();
+
+            Vector3 start = point + dir;
+
+            Ray L(start, dir);
+            Vector3 R =
+                (normal * (L.dir.dot(normal) * 2.0) - L.dir).normalize();
+            Vector3 V = -point.normalize();
+
+            bool flag = false;
+            for (int j = 0; j < objects.size(); j++) {
+                double t = objects[j]->t_intersection(L);
+                if (t > 0) {
+                    flag = true;
+                    break;
+                }
+            }
+
+            if (!flag) {
+                lambert = k_d * L.dir.dot(normal);
+                phong   = k_s * pow(R.dot(V), k);
+
+                clip(lambert, 0.0, 1.0);
+                clip(phong, 0.0, 1.0);
+            }
+
+            current_color[0] += ((k_a + lambert + phong) * color.r);
+            current_color[1] += ((k_a + lambert + phong) * color.g);
+            current_color[2] += ((k_a + lambert + phong) * color.b);
+
+            if (level > 0) {
+                Vector3 start = point + reflection;
+
+                Ray reflectionRay(start, reflection);
+                double reflected_color[3] = {0.0, 0.0, 0.0};
+
+                pair<double, double> pair =
+                    getNearest_index_t(reflectionRay, objects);
+                int nearest  = pair.first;
+                double t_min = pair.second;
+
+                if (nearest != -1) {
+                    objects[nearest]->getColor(reflectionRay, t_min,
+                                               reflected_color, level - 1);
+
+                    for (int k = 0; k < 3; k++) {
+                        current_color[k] += reflected_color[k] * k_r;
+                    }
+                }
+            }
+
+            for (int k = 0; k < 3; k++) {
+                clip(current_color[k], 0.0, 1.0);
+            }
+        }
     }
 
     virtual void draw()                             = 0;
@@ -103,18 +185,16 @@ class Sphere : public Object {
     }
 
     double t_intersection(const Ray& ray) override {
-        double a, b, c, d;
+        Vector3 CR = ray.start - center;
+        double b   = ray.dir.dot(CR);
 
-        a = ray.dir.dot(ray.dir);
-        b = ray.dir.dot(ray.start) * 2;
-        c = ray.start.dot(ray.start) - radius * radius;
+        double D = b * b - CR.dot(CR) + radius * radius; // Discriminant
 
-        d = b * b - 4 * a * c;
-        if (d < 0)
-            return -1.0;
+        if (D < 0)
+            return -1;
 
-        double t1 = (-b + sqrt(d)) / (2 * a);
-        double t2 = (-b - sqrt(d)) / (2 * a);
+        double t1 = -b + sqrt(D);
+        double t2 = -b - sqrt(D);
 
         return min(t1, t2);
     }
