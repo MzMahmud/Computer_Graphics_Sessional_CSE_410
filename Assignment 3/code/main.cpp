@@ -3,9 +3,6 @@
 
 using namespace std;
 
-extern vector<Object*> objects;
-extern vector<Vector3> lights;
-
 void move_up(double step);
 void move_down(double step);
 void move_forward(double step);
@@ -23,10 +20,13 @@ void tilt(double angle);
 
 Vector3 pos, u, r, l;
 
-int imageWidth, imageHeight;
+int imageWidth = 768, imageHeight = 768;
 int windowWidth = 500, windowHeight = 500;
 int recursion_level = 3;
 double viewAngleDeg = 90;
+
+vector<Object*> objects;
+vector<Vector3> lights;
 
 void getInput() {
     ifstream fin("description.txt");
@@ -40,7 +40,7 @@ void getInput() {
 
     int n_obj;
     fin >> n_obj;
-    cout << "objects : " << n_obj << endl;
+    cout << "#objects : " << n_obj << endl;
 
     // string s;
     // fin >> s; // dummy to avoid new line
@@ -53,7 +53,6 @@ void getInput() {
 
     for (int i = 0; i < n_obj; i++) {
         string name;
-        // fin >> name; // dummy to avoid new line
         fin >> name;
         cout << "name " << name << endl;
 
@@ -61,7 +60,6 @@ void getInput() {
             name.pop_back();
 
         if (name == string("sphere")) {
-            cout << "in sphere" << endl;
             double c[3];
             fin >> c[0] >> c[1] >> c[2];
 
@@ -144,8 +142,6 @@ void getInput() {
             // objects.push_back(triangle3);
             // objects.push_back(triangle4);
         }
-
-        // fin >> name; // dummy to avoid new line
     }
 
     int n_light;
@@ -153,8 +149,6 @@ void getInput() {
     cout << "lights : " << n_light << endl;
 
     for (int i = 0; i < n_light; i++) {
-        cout << "in lights input" << endl;
-
         double x, y, z;
         fin >> x >> y >> z;
         lights.push_back(Vector3(x, y, z));
@@ -166,21 +160,14 @@ void getInput() {
 pair<int, double> getNearest_index_t(const Ray& ray,
                                      const vector<Object*>& objects) {
     int min_index = -1;
-    double min_t  = 9999999;
-
-    for (int k = 0; k < objects.size(); k++) {
-        double tk = objects[k]->t_intersection(ray);
-
-        // cout << "intersect tk = " << tk << endl;
-
-        if (tk <= 0.0)
-            continue;
-        else if (tk < min_t) {
-            min_t     = tk;
-            min_index = k;
+    double min_t  = INT32_MAX;
+    for (int i = 0; i < objects.size(); i++) {
+        double t = objects[i]->t_intersection(ray);
+        if (t > .0 && t < min_t) {
+            min_t     = t;
+            min_index = i;
         }
     }
-
     return make_pair(min_index, min_t);
 }
 
@@ -201,22 +188,19 @@ void capture() {
             Vector3 dir = topLeft + r * i * du - u * j * dv;
 
             Ray ray(pos, dir - pos);
-            double dummy_color[3] = {0.0, 0.0, 0.0};
 
-            pair<double, double> pair = getNearest_index_t(ray, objects);
+            pair<int, double> pair = getNearest_index_t(ray, objects);
             int near_index = pair.first;
             double near_t  = pair.second;
-
+            ColorRGB pixelColor(0, 0, 0);
             if (near_index != -1) {
-                objects[near_index]->getColor(ray, near_t, dummy_color,
-                                              recursion_level);
+                pixelColor = objects[near_index]->getColor(
+                    ray, near_t, recursion_level, lights, objects);
             }
-
-            image.set_pixel(i, j, dummy_color[0] * 255, dummy_color[1] * 255,
-                            dummy_color[2] * 255);
+            image.set_pixel(i, j, pixelColor.r * 255, pixelColor.g * 255,
+                            pixelColor.b * 255);
         }
     }
-
     image.save_image("out.bmp");
 }
 

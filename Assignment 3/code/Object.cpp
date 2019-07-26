@@ -1,15 +1,11 @@
 #include "Vector3.cpp"
 #include <GL/glut.h>
-#define EPSILON 0.000001
 
 class Ray;
 class Object;
 
 pair<int, double> getNearest_index_t(const Ray& ray,
                                      const vector<Object*>& objects);
-
-vector<Object*> objects;
-vector<Vector3> lights;
 
 class Ray {
   public:
@@ -39,6 +35,10 @@ struct ColorRGB {
         b += other.b;
         return *this;
     }
+    ColorRGB& operator+=(double val) {
+        *this += ColorRGB(val * r, val * g, val * b);
+        return *this;
+    }
 };
 
 ColorRGB operator*(const ColorRGB& color, double val) {
@@ -54,11 +54,9 @@ ColorRGB operator+(const ColorRGB& a, const ColorRGB& b) {
     return temp += b;
 }
 
-void clip(double& value, double min_val, double max_val) {
-    if (value < min_val)
-        value = min_val;
-    if (value > max_val)
-        value = max_val;
+Vector3 reflectedRayDirection(const Ray& ray, Vector3 normal) {
+    Vector3 ref = ray.dir - normal * 2.0 * ray.dir.dot(normal);
+    return ref.normalize();
 }
 
 class Object {
@@ -84,12 +82,11 @@ class Object {
 
     void setExponent(double _k) { k = _k; }
 
-    Vector3 reflectedRayDirection(const Ray& ray, Vector3 normal) {
-        Vector3 ref = ray.dir - normal * 2.0 * ray.dir.dot(normal);
-        return ref.normalize();
-    }
+    ColorRGB getColor(const Ray& ray, double t, int level,
+                      const vector<Vector3>& lights,
+                      const vector<Object*>& objects) {
 
-    void getColor(Ray& ray, double t, double current_color[3], int level) {
+        ColorRGB colorOut(0, 0, 0);
 
         Vector3 point      = ray.start + ray.dir * t;
         Vector3 normal     = getNormal(point);
@@ -97,37 +94,21 @@ class Object {
 
         for (int i = 0; i < lights.size(); i++) {
 
-            double lambert = 0.0, phong = 0.0;
+            double ambientComp, diffuseComp, specularComp;
 
-            Vector3 dir = (lights[i] - point).normalize();
+            Vector3 LP_dir = (point - lights[i]).normalize();
 
-            Vector3 start = point + dir;
+            Vector3 start = point + LP_dir;
 
-            Ray L(start, dir);
-            Vector3 R =
-                (normal * (L.dir.dot(normal) * 2.0) - L.dir).normalize();
+            Ray L(start, LP_dir);
+            Vector3 R = reflectedRayDirection(L, normal).normalize();
             Vector3 V = -point.normalize();
 
-            bool flag = false;
-            for (int j = 0; j < objects.size(); j++) {
-                double t = objects[j]->t_intersection(L);
-                if (t > 0) {
-                    flag = true;
-                    break;
-                }
-            }
+            ambientComp  = k_a;
+            diffuseComp  = k_d * max(L.dir.dot(normal), .0);
+            specularComp = k_s * max(pow(R.dot(V), k), .0);
 
-            if (!flag) {
-                lambert = k_d * L.dir.dot(normal);
-                phong   = k_s * pow(R.dot(V), k);
-
-                clip(lambert, 0.0, 1.0);
-                clip(phong, 0.0, 1.0);
-            }
-
-            current_color[0] += ((k_a + lambert + phong) * color.r);
-            current_color[1] += ((k_a + lambert + phong) * color.g);
-            current_color[2] += ((k_a + lambert + phong) * color.b);
+            colorOut += (color * (ambientComp + diffuseComp + specularComp));
 
             if (level > 0) {
                 Vector3 start = point + reflection;
@@ -135,24 +116,18 @@ class Object {
                 Ray reflectionRay(start, reflection);
                 double reflected_color[3] = {0.0, 0.0, 0.0};
 
-                pair<double, double> pair =
+                pair<int, double> pair =
                     getNearest_index_t(reflectionRay, objects);
-                int nearest  = pair.first;
-                double t_min = pair.second;
+                int near_index = pair.first;
+                double near_t  = pair.second;
 
-                if (nearest != -1) {
-                    objects[nearest]->getColor(reflectionRay, t_min,
-                                               reflected_color, level - 1);
-
-                    for (int k = 0; k < 3; k++) {
-                        current_color[k] += reflected_color[k] * k_r;
-                    }
+                if (near_index != -1) {
+                    ColorRGB ref = objects[near_index]->getColor(
+                        reflectionRay, near_t, level - 1, lights, objects);
+                    colorOut += (ref * k_r);
                 }
             }
-
-            for (int k = 0; k < 3; k++) {
-                clip(current_color[k], 0.0, 1.0);
-            }
+            return colorOut;
         }
     }
 
@@ -225,8 +200,14 @@ class Triangle : public Object {
         }
         glEnd();
     }
-    double t_intersection(const Ray& ray) override { return -1; }
+
+    double t_intersection(const Ray& ray) override {
+        // TODO:
+        return -1;
+    }
+
     Vector3 getNormal(const Vector3& point) override {
+        // TODO:
         return Vector3(1, 0, 0);
     }
 };
@@ -253,9 +234,13 @@ class Square : public Object {
         glEnd();
     }
 
-    double t_intersection(const Ray& ray) override { return -1; }
+    double t_intersection(const Ray& ray) override {
+        // TODO:
+        return -1;
+    }
+
     Vector3 getNormal(const Vector3& point) override {
-        return Vector3(1, 0, 0);
+        return Vector3(0, 0, 1); // always z-axis
     }
 };
 
@@ -298,8 +283,12 @@ class Floor : public Object {
         glEnd();
     }
 
-    double t_intersection(const Ray& ray) override { return -1; }
+    double t_intersection(const Ray& ray) override {
+        // TODO: implement this
+        return -1;
+    }
+
     Vector3 getNormal(const Vector3& point) override {
-        return Vector3(1, 0, 0);
+        return Vector3(0, 0, 1); // always z-axis
     }
 };
