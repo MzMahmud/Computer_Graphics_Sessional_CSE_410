@@ -159,42 +159,51 @@ class Object {
         Vector3 normal     = getNormal(point);
         Vector3 reflection = reflectedRayDirection(ray, normal);
 
+        // get spacular and difudes component
         for (int i = 0; i < lights.size(); i++) {
             double ambientComp = .0, diffuseComp = .0, specularComp = .0;
 
-            Vector3 LP_dir = lights[i] - point;
-            Vector3 start  = point + LP_dir;
+            Vector3 L_dir   = lights[i] - point;
+            Vector3 L_start = point + L_dir;
+            Ray L(L_start, L_dir);
 
-            Ray L(start, LP_dir);
-            Vector3 R = reflectedRayDirection(L, normal).normalize();
-            Vector3 V = point.normalize();
+            bool lightConsumed = false;
+            for (int i = 0; i < objects.size(); i++) {
+                if (objects[i]->t_intersection(L) > .0) {
+                    lightConsumed = true;
+                    break;
+                }
+            }
+            if (!lightConsumed) {
+                Vector3 R =
+                    normal * 2 * normal.dot(L.dir) - L.dir; // R = 2 (L.N)N – L
+                Vector3 V = -ray.dir;
 
-            int near_index = getNearest_index_t(L, objects).first;
-            if (objects[near_index] == this) {
                 diffuseComp  = k_d * max(L.dir.dot(normal), .0);
                 specularComp = k_s * max(pow(R.dot(V), k), .0);
-
-                diffuseComp  = diffuseComp > 1.0 ? 1.0 : diffuseComp;
-                specularComp = specularComp > 1.0 ? 1.0 : specularComp;
             }
 
             ambientComp = k_a;
             colorOut += (color * (ambientComp + diffuseComp + specularComp));
 
-            if (level > 0) {
-                Vector3 start = point + reflection;
-                Ray reflectionRay(start, reflection);
-                pair<int, double> near_index_t =
-                    getNearest_index_t(reflectionRay, objects);
-                int near_index = near_index_t.first;
-                double near_t  = near_index_t.second;
-                if (near_index >= 0) {
-                    ColorRGB ref = objects[near_index]->getColor(
-                        reflectionRay, near_t, level - 1, lights, objects);
-                    colorOut += (ref * k_r);
-                }
+            // cout << "diffuseComp " << diffuseComp << endl;
+            // cout << "specularComp " << specularComp << endl;
+        }
+
+        // add reflected color
+        if (level > 0) {
+            Ray reflectionRay(point + reflection, reflection);
+            pair<int, double> near_index_t =
+                getNearest_index_t(reflectionRay, objects);
+            int near_index = near_index_t.first;
+            double near_t  = near_index_t.second;
+            if (near_index >= 0) {
+                ColorRGB ref = objects[near_index]->getColor(
+                    reflectionRay, near_t, level - 1, lights, objects);
+                colorOut += (ref * k_r);
             }
         }
+
         return colorOut.clip();
     }
 
