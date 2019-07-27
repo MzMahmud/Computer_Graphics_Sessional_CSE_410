@@ -42,19 +42,15 @@ void getInput() {
     fin >> n_obj;
     cout << "#objects : " << n_obj << endl;
 
-    // string s;
-    // fin >> s; // dummy to avoid new line
-
     // Floor
-
-    // TODO: floor not implemented yet!
-    // Object* floor = new Floor(600, 30);
-    // objects.push_back(floor);
+    Object* floor = new Floor(600, 30);
+    floor->setCoeff(0.4, 0.2, 0.2, 0.2);
+    floor->setExponent(5);
+    objects.push_back(floor);
 
     for (int i = 0; i < n_obj; i++) {
         string name;
         fin >> name;
-        cout << "name " << name << endl;
 
         while (name[(int)name.length() - 1] == '\r')
             name.pop_back();
@@ -99,7 +95,8 @@ void getInput() {
             Vector3 up =
                 Vector3((2 * c[0] + l) / 2, (2 * c[1] + l) / 2, c[2] + h);
 
-            Object* base = new Square(v1, l);
+            Object* base1 = new Triangle(v1, v2, v4);
+            Object* base2 = new Triangle(v2, v3, v4);
 
             Object* triangle1 = new Triangle(v1, v2, up);
             Object* triangle2 = new Triangle(v2, v3, up);
@@ -109,7 +106,8 @@ void getInput() {
             double col[3];
             fin >> col[0] >> col[1] >> col[2];
 
-            base->setColor(col[0], col[1], col[2]);
+            base1->setColor(col[0], col[1], col[2]);
+            base2->setColor(col[0], col[1], col[2]);
 
             triangle1->setColor(col[0], col[1], col[2]);
             triangle2->setColor(col[0], col[1], col[2]);
@@ -120,7 +118,8 @@ void getInput() {
             for (int j = 0; j < 4; j++)
                 fin >> coeff[j];
 
-            base->setCoeff(coeff[0], coeff[1], coeff[2], coeff[3]);
+            base1->setCoeff(coeff[0], coeff[1], coeff[2], coeff[3]);
+            base2->setCoeff(coeff[0], coeff[1], coeff[2], coeff[3]);
 
             triangle1->setCoeff(coeff[0], coeff[1], coeff[2], coeff[3]);
             triangle2->setCoeff(coeff[0], coeff[1], coeff[2], coeff[3]);
@@ -129,24 +128,26 @@ void getInput() {
 
             double k;
             fin >> k;
-            base->setExponent(k);
+            base1->setExponent(k);
+            base2->setExponent(k);
             triangle1->setExponent(k);
             triangle2->setExponent(k);
             triangle3->setExponent(k);
             triangle4->setExponent(k);
 
             // TODO: pyramid not implemented yet!
-            // objects.push_back(base);
-            // objects.push_back(triangle1);
-            // objects.push_back(triangle2);
-            // objects.push_back(triangle3);
-            // objects.push_back(triangle4);
+            objects.push_back(base1);
+            objects.push_back(base2);
+            objects.push_back(triangle1);
+            objects.push_back(triangle2);
+            objects.push_back(triangle3);
+            objects.push_back(triangle4);
         }
     }
 
     int n_light;
     fin >> n_light;
-    cout << "lights : " << n_light << endl;
+    cout << "#lights : " << n_light << endl;
 
     for (int i = 0; i < n_light; i++) {
         double x, y, z;
@@ -172,6 +173,7 @@ pair<int, double> getNearest_index_t(const Ray& ray,
 }
 
 void capture() {
+
     double viewAngle     = DEGtoRAD(viewAngleDeg);
     double planeDistance = (windowHeight / 2) / tan(viewAngle / 2);
 
@@ -183,6 +185,7 @@ void capture() {
 
     bitmap_image image(imageWidth, imageHeight);
 
+    cout << ".....Capturing Image....." << endl;
     for (int i = 0; i < imageWidth; i++) {
         for (int j = 0; j < imageHeight; j++) {
             Vector3 dir = topLeft + r * i * du - u * j * dv;
@@ -202,6 +205,7 @@ void capture() {
         }
     }
     image.save_image("out.bmp");
+    cout << "*****Image CAPTURED!*****" << endl;
 }
 
 void keyboardListener(unsigned char key, int x, int y) {
@@ -364,17 +368,13 @@ void init() {
     // near distance
     // far distance
 
-    // pos = Vector3(0, -200, 30);
-    // l   = Vector3(0.0, 1.0, 0.0);
-    // r   = Vector3(1.0, 0.0, 0.0);
-    // u   = Vector3(0.0, 0.0, 1.0);
     pos = Vector3(100, 100, 0);
     l   = Vector3(-1 / sqrt(2), -1 / sqrt(2), 0);
     r   = Vector3(-1 / sqrt(2), 1 / sqrt(2), 0);
     u   = Vector3(0, 0, 1);
 
-    //    move_up(50);
-    //    look_down(20);
+    move_up(50);
+    look_down(20);
 }
 
 int main(int argc, char** argv) {

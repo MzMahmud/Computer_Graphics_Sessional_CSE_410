@@ -1,5 +1,62 @@
-#include "Vector3.cpp"
 #include <GL/glut.h>
+#include <bits/stdc++.h>
+
+#define PI (acos(-1.0))
+#define DEGtoRAD(x) ((x)*PI / 180)
+
+using namespace std;
+
+class Vector3 {
+  public:
+    double x, y, z;
+    Vector3(double _x = .0, double _y = .0, double _z = .0)
+        : x(_x), y(_y), z(_z) {}
+
+    double mod() { return sqrt(x * x + y * y + z * z); }
+
+    Vector3 operator+(const Vector3& other) const {
+        return Vector3(this->x + other.x, this->y + other.y, this->z + other.z);
+    }
+    Vector3 operator-(const Vector3& other) const {
+        return Vector3(this->x - other.x, this->y - other.y, this->z - other.z);
+    }
+    Vector3 operator-() const { return Vector3(-this->x, -this->y, -this->z); }
+    Vector3 operator*(double a) const {
+        return Vector3(this->x * a, this->y * a, this->z * a);
+    }
+    Vector3 operator/(double a) const {
+        return Vector3(this->x / a, this->y / a, this->z / a);
+    }
+
+    double dot(const Vector3& other) const {
+        return this->x * other.x + this->y * other.y + this->z * other.z;
+    }
+    Vector3 cross(const Vector3& other) const {
+        return Vector3(this->y * other.z - this->z * other.y,
+                       this->z * other.x - this->x * other.z,
+                       this->x * other.y - this->y * other.x);
+    }
+    Vector3 normalize() { return *this / this->mod(); }
+    // rotate this 3d vector (l) counterclockwise with respect to a 3d unit
+    // vector r by an angle A, where l and r are perpendicular to each other
+    Vector3 rotate(double A, const Vector3& r) {
+        A         = DEGtoRAD(A);
+        Vector3 l = *this;
+        Vector3 u = r.cross(l);
+        return u * sin(A) + l * cos(A);
+    }
+};
+
+std::ostream& operator<<(std::ostream& sout, const Vector3& p) {
+    sout << "(" << p.x << "," << p.y << "," << p.z << ")";
+    return sout;
+}
+std::istream& operator>>(std::istream& sin, Vector3& p) {
+    sin >> p.x >> p.y >> p.z;
+    return sin;
+}
+
+#define IN_RANGE(x, a, b) ((a) <= (x) && (x) <= (b))
 
 class Ray;
 class Object;
@@ -10,11 +67,16 @@ pair<int, double> getNearest_index_t(const Ray& ray,
 class Ray {
   public:
     Vector3 start, dir;
-    Ray(Vector3 _start, Vector3 _dir) {
-        start = _start;
-        dir   = _dir.normalize();
-    }
+    Ray(Vector3 _start, Vector3 _dir) : start(_start), dir(_dir.normalize()) {}
 };
+
+double clippedValue(double val, double min, double max) {
+    if (val < min)
+        return min;
+    if (val > max)
+        return max;
+    return val;
+}
 
 struct ColorRGB {
     double r, g, b;
@@ -37,6 +99,12 @@ struct ColorRGB {
     }
     ColorRGB& operator+=(double val) {
         *this += ColorRGB(val * r, val * g, val * b);
+        return *this;
+    }
+    ColorRGB& clip() {
+        r = clippedValue(r, 0, 1);
+        g = clippedValue(g, 0, 1);
+        b = clippedValue(b, 0, 1);
         return *this;
     }
 };
@@ -87,48 +155,47 @@ class Object {
                       const vector<Object*>& objects) {
 
         ColorRGB colorOut(0, 0, 0);
-
         Vector3 point      = ray.start + ray.dir * t;
         Vector3 normal     = getNormal(point);
         Vector3 reflection = reflectedRayDirection(ray, normal);
 
         for (int i = 0; i < lights.size(); i++) {
+            double ambientComp = .0, diffuseComp = .0, specularComp = .0;
 
-            double ambientComp, diffuseComp, specularComp;
-
-            Vector3 LP_dir = (point - lights[i]).normalize();
-
-            Vector3 start = point + LP_dir;
+            Vector3 LP_dir = lights[i] - point;
+            Vector3 start  = point + LP_dir;
 
             Ray L(start, LP_dir);
             Vector3 R = reflectedRayDirection(L, normal).normalize();
-            Vector3 V = -point.normalize();
+            Vector3 V = point.normalize();
 
-            ambientComp  = k_a;
-            diffuseComp  = k_d * max(L.dir.dot(normal), .0);
-            specularComp = k_s * max(pow(R.dot(V), k), .0);
+            int near_index = getNearest_index_t(L, objects).first;
+            if (objects[near_index] == this) {
+                diffuseComp  = k_d * max(L.dir.dot(normal), .0);
+                specularComp = k_s * max(pow(R.dot(V), k), .0);
 
+                diffuseComp  = diffuseComp > 1.0 ? 1.0 : diffuseComp;
+                specularComp = specularComp > 1.0 ? 1.0 : specularComp;
+            }
+
+            ambientComp = k_a;
             colorOut += (color * (ambientComp + diffuseComp + specularComp));
 
             if (level > 0) {
                 Vector3 start = point + reflection;
-
                 Ray reflectionRay(start, reflection);
-                double reflected_color[3] = {0.0, 0.0, 0.0};
-
-                pair<int, double> pair =
+                pair<int, double> near_index_t =
                     getNearest_index_t(reflectionRay, objects);
-                int near_index = pair.first;
-                double near_t  = pair.second;
-
-                if (near_index != -1) {
+                int near_index = near_index_t.first;
+                double near_t  = near_index_t.second;
+                if (near_index >= 0) {
                     ColorRGB ref = objects[near_index]->getColor(
                         reflectionRay, near_t, level - 1, lights, objects);
                     colorOut += (ref * k_r);
                 }
             }
-            return colorOut;
         }
+        return colorOut.clip();
     }
 
     virtual void draw()                             = 0;
@@ -142,10 +209,8 @@ class Sphere : public Object {
     double radius;
 
     Sphere() {}
-    Sphere(double cX, double cY, double cZ, double r) {
-        center = Vector3(cX, cY, cZ);
-        radius = r;
-    }
+    Sphere(double cX, double cY, double cZ, double r)
+        : center(Vector3(cX, cY, cZ)), radius(r) {}
 
     ~Sphere() {}
 
@@ -182,10 +247,10 @@ class Sphere : public Object {
 
 class Triangle : public Object {
   public:
-    Vector3 v1, v2, v3;
+    Vector3 a, b, c;
 
     Triangle() {}
-    Triangle(Vector3 _1, Vector3 _2, Vector3 _3) : v1(_1), v2(_2), v3(_3) {}
+    Triangle(Vector3 _1, Vector3 _2, Vector3 _3) : a(_1), b(_2), c(_3) {}
 
     ~Triangle() {}
 
@@ -194,98 +259,98 @@ class Triangle : public Object {
         glBegin(GL_TRIANGLES);
         {
             glColor3d(color.r, color.g, color.b);
-            glVertex3d(v1.x, v1.y, v1.z);
-            glVertex3d(v2.x, v2.y, v2.z);
-            glVertex3d(v3.x, v3.y, v3.z);
+            glVertex3d(a.x, a.y, a.z);
+            glVertex3d(b.x, b.y, b.z);
+            glVertex3d(c.x, c.y, c.z);
         }
         glEnd();
     }
 
     double t_intersection(const Ray& ray) override {
-        // TODO:
-        return -1;
+        Vector3 n  = getNormal(a);
+        Vector3 P0 = a;
+        Vector3 R0 = ray.start;
+        Vector3 Rd = ray.dir;
+
+        if (Rd.dot(n) == .0)
+            return -1.0;
+
+        double t = (P0 - R0).dot(n) / Rd.dot(n);
+
+        Vector3 p = R0 + Rd * t; // intersection point
+
+        Vector3 ab = b - a; // AB edge
+        Vector3 bc = c - b; // BC edge
+        Vector3 ca = a - c; // CA edge
+
+        Vector3 norm = ab.cross(p - b); // AB x BP
+        if (norm.dot(n) < .0)
+            return -1;
+
+        norm = bc.cross(p - c); // BC x CP
+        if (norm.dot(n) < .0)
+            return -1;
+
+        norm = ca.cross(p - a); // CA x AP
+        if (norm.dot(n) < .0)
+            return -1;
+
+        return t;
     }
 
     Vector3 getNormal(const Vector3& point) override {
-        // TODO:
-        return Vector3(1, 0, 0);
-    }
-};
-
-class Square : public Object {
-  public:
-    Vector3 v;
-    double len;
-
-    Square() {}
-    Square(Vector3 _1, double _len) : v(_1), len(_len) {}
-
-    ~Square() {}
-
-    void draw() override {
-        glBegin(GL_QUADS);
-        {
-            glColor3d(color.r, color.g, color.b);
-            glVertex3d(v.x, v.y, v.z);
-            glVertex3d(v.x + len, v.y, v.z);
-            glVertex3d(v.x + len, v.y + len, v.z);
-            glVertex3d(v.x, v.y + len, v.z);
-        }
-        glEnd();
-    }
-
-    double t_intersection(const Ray& ray) override {
-        // TODO:
-        return -1;
-    }
-
-    Vector3 getNormal(const Vector3& point) override {
-        return Vector3(0, 0, 1); // always z-axis
+        Vector3 ab = b - a;
+        Vector3 ac = c - a;
+        return ab.cross(ac).normalize();
     }
 };
 
 class Floor : public Object {
-
   public:
-    Vector3 center;
-    double floorLen, tileLen;
     int n;
+    Vector3 bottomLeft;
+    double floorLen, tileLen;
 
-    Floor(double _floorLen, double _tileLen) {
-        floorLen = _floorLen;
-        tileLen  = _tileLen;
-        center   = Vector3(-floorLen / 2.0, -floorLen / 2.0, 0.0);
-        n        = floorLen / tileLen;
+    Floor(double _floorLen, double _tileLen)
+        : floorLen(_floorLen), tileLen(_tileLen) {
+
+        bottomLeft = Vector3(-floorLen / 2.0, -floorLen / 2.0, 0.0);
+        n          = floorLen / tileLen;
     }
 
     void draw() override {
         glBegin(GL_QUADS);
-        {
-            for (int i = 0; i < n; i++) {
-                for (int j = 0; j < n; j++) {
-
-                    if ((i + j) & 0x00000001)
-                        glColor3d(1.0, 1.0, 1.0);
-                    else
-                        glColor3d(0.0, 0.0, 0.0);
-
-                    glVertex3d(center.x + tileLen * i, center.y + tileLen * j,
-                               center.z);
-                    glVertex3d(center.x + tileLen * (i + 1),
-                               center.y + tileLen * j, center.z);
-                    glVertex3d(center.x + tileLen * (i + 1),
-                               center.y + tileLen * (j + 1), center.z);
-                    glVertex3d(center.x + tileLen * i,
-                               center.y + tileLen * (j + 1), center.z);
-                }
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                if ((i + j) & 0x00000001)
+                    glColor3d(1.0, 1.0, 1.0);
+                else
+                    glColor3d(0.0, 0.0, 0.0);
+                glVertex3d(bottomLeft.x + tileLen * i,
+                           bottomLeft.y + tileLen * j, bottomLeft.z);
+                glVertex3d(bottomLeft.x + tileLen * (i + 1),
+                           bottomLeft.y + tileLen * j, bottomLeft.z);
+                glVertex3d(bottomLeft.x + tileLen * (i + 1),
+                           bottomLeft.y + tileLen * (j + 1), bottomLeft.z);
+                glVertex3d(bottomLeft.x + tileLen * i,
+                           bottomLeft.y + tileLen * (j + 1), bottomLeft.z);
             }
         }
         glEnd();
     }
 
     double t_intersection(const Ray& ray) override {
-        // TODO: implement this
-        return -1;
+        if (ray.dir.z == .0)
+            return -1;
+        double t      = -(ray.start.z / ray.dir.z);
+        Vector3 point = ray.start + ray.dir * t;
+        int i         = (point.x - bottomLeft.x) / tileLen;
+        int j         = (point.y - bottomLeft.y) / tileLen;
+        if (!IN_RANGE(i, 0, n - 1) || !IN_RANGE(j, 0, n - 1))
+            return -1;
+        double col = (i + j) & 0x00000001;
+        setColor(col, col, col);
+        return t;
     }
 
     Vector3 getNormal(const Vector3& point) override {
