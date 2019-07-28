@@ -163,20 +163,11 @@ class Object {
         for (int i = 0; i < lights.size(); i++) {
             double ambientComp = .0, diffuseComp = .0, specularComp = .0;
 
-            Vector3 L_dir   = lights[i] - point;
-            Vector3 L_start = point + L_dir;
-            Ray L(L_start, L_dir);
-
-            bool lightConsumed = false;
-            for (int i = 0; i < objects.size(); i++) {
-                if (objects[i]->t_intersection(L) > .0) {
-                    lightConsumed = true;
-                    break;
-                }
-            }
-            if (!lightConsumed) {
+            Ray L(lights[i], point - lights[i]);
+            int near_index = getNearest_index_t(L, objects).first;
+            if (objects[near_index] != this) {
                 Vector3 R =
-                    normal * 2 * normal.dot(L.dir) - L.dir; // R = 2 (L.N)N – L
+                    normal * 2 * normal.dot(L.dir) - L.dir; // R = 2(L.N)N –L
                 Vector3 V = -ray.dir;
 
                 diffuseComp  = k_d * max(L.dir.dot(normal), .0);
@@ -185,9 +176,6 @@ class Object {
 
             ambientComp = k_a;
             colorOut += (color * (ambientComp + diffuseComp + specularComp));
-
-            // cout << "diffuseComp " << diffuseComp << endl;
-            // cout << "specularComp " << specularComp << endl;
         }
 
         // add reflected color

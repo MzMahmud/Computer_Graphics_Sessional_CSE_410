@@ -44,8 +44,8 @@ void getInput() {
 
     // Floor
     Object* floor = new Floor(600, 30);
-    floor->setCoeff(0.2, 0.2, 0.2, 0.6);
-    floor->setExponent(10);
+    floor->setCoeff(0.4, 0.2, 0.2, .4);
+    floor->setExponent(20);
     objects.push_back(floor);
 
     for (int i = 0; i < n_obj; i++) {
