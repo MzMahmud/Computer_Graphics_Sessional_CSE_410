@@ -14,8 +14,8 @@ sphere
 0.0 -30.0 20.0 
 20.0
 0.0 0.0 1.0
-0.2 0.2 0.4 .4
-30
+0.2 0.2 0.4 0.2
+10
 
 sphere
 10.0 0.0 10.0
@@ -31,10 +31,8 @@ sphere
 0.4 0.3 0.1 0.2
 10
 
-2
+1
 70.0 70.0 70.0
--70 70 70 
-
 
 
 
@@ -82,8 +80,7 @@ sphere type of object
 5 specular exponent
 
 
-2 number of light sources
+1 number of light sources
 
 70.0 70.0 70.0 position of first light source
 
--70.0 70.0 70.0 position of second light source

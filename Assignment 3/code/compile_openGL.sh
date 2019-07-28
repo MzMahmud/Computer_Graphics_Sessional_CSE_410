@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# compileOpenGl.sh
+# script to compile in linux
+
+# ----dependencoes----
+# sudo apt-get update
+# sudo apt-get install libglu1-mesa-dev freeglut3-dev mesa-common-dev
+
 if [ $# -eq 0 ]
 then
 	echo "**USAGE**"
@@ -15,3 +22,4 @@ do
     out=`echo "$file" | cut -d"." -f1`
     $CC "$file" $CFlags -o "$out.out"
 done
+
