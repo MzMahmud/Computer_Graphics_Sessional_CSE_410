@@ -15,7 +15,7 @@ then
 fi
 
 CC="g++ -std=c++11"
-CFlags="-lglut -lGL -lGLEW -lGLU"
+CFlags="-lglut -lGL -lGLU"
 
 for file in $*
 do
