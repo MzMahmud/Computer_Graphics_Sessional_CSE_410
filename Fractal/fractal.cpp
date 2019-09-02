@@ -1,6 +1,7 @@
 #include <GL/glut.h> // GLUT, include glu.h and gl.h
 #include <cmath>
 #include <iostream>
+#include <list>
 
 using namespace std;
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -155,13 +156,54 @@ void drawTree(Vector3 &pos, Vector3 dir, double len, int depth) {
              depth - 1);
 }
 
+struct Line {
+    Vector3 start, end;
+    Line(Vector3 s, Vector3 e) : start(s), end(e) {}
+};
+
+void drawDragonCurve(list<Line> &lines, int gen) {
+    if (!gen) {
+        glBegin(GL_LINES);
+
+        list<Line>::iterator it;
+        for (it = lines.begin(); it != lines.end(); it++) {
+            Line line = *it;
+            glVertex3d(line.start.x, line.start.y, line.start.z);
+            glVertex3d(line.end.x, line.end.y, line.end.z);
+        }
+
+        glEnd();
+        return;
+    }
+
+    list<Line> new_lines;
+    list<Line>::iterator it;
+    int i;
+    for (i = 0, it = lines.begin(); it != lines.end(); it++, i++) {
+        Line line       = *it;
+        Vector3 dir     = line.end - line.start;
+        int sign        = i % 2 ? -1 : 1; // alternates the left-right rotation
+        dir             = dir.rotate(-45 * sign, Vector3(0, 0, 1));
+        Vector3 new_end = line.start + dir / sqrt(2);
+        Line new_line   = Line(line.start, new_end);
+
+        // line 1: start at prev start ends at new end
+        new_lines.push_back(new_line);
+
+        // line 2: start at new end ends at prev end
+        new_lines.push_back(Line(new_end, line.end));
+    }
+    lines = new_lines;
+    drawDragonCurve(lines, gen - 1);
+}
+
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    Vector3 pos(0, -1, 0);
-    Vector3 dir(0, 1, 0);
+    Vector3 pos(-.8, 0, 0);
+    Vector3 dir(1, 0, 0);
 
     glColor3f(1, 1, 1);
 
@@ -170,7 +212,13 @@ void draw() {
     // pos = Vector3(-.5, -.2, 0);
     // drawKochSnow(pos, MAX(gen++, 0) % 10);
 
-    drawTree(pos, dir, .5, MAX(gen++, 0) % 20);
+    // drawTree(pos, dir, .5, MAX(gen++, 0) % 20);
+
+    list<Line> lines;
+    Vector3 start(-.5, .3, 0);
+    Vector3 end(.5, .3, 0);
+    lines.push_back(Line(start, end)); // initial line
+    drawDragonCurve(lines, MAX(gen++, 0) % 20);
 
     glutSwapBuffers(); // Send the 3D scene to the screen
 }
@@ -178,7 +226,7 @@ void draw() {
 int main(int argc, char **argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(800, 800);
+    glutInitWindowSize(600, 600);
     glutCreateWindow("Fractal");
 
     glEnable(GL_DEPTH_TEST);
