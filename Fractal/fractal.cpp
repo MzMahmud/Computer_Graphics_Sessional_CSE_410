@@ -1,12 +1,12 @@
 #include <GL/glut.h> // GLUT, include glu.h and gl.h
 #include <cmath>
 #include <iostream>
-#include <list>
+#include <vector>
 
 using namespace std;
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 #define pi (acos(-1.0))
-#define DEGtoRED(x) (x * pi / 180)
+#define DEGtoRAD(x) (x * pi / 180)
 struct Vector3 {
     double x, y, z;
     Vector3(double _x = .0, double _y = .0, double _z = .0) {
@@ -42,7 +42,7 @@ struct Vector3 {
     // rotate this 3d vector (l) counterclockwise with respect to a 3d unit
     // vector r by an angle A, where l and r are perpendicular to each other
     Vector3 rotate(double A, const Vector3 &r) {
-        A         = DEGtoRED(A);
+        A         = DEGtoRAD(A);
         Vector3 l = *this;
         Vector3 u = r.cross(l);
         return u * sin(A) + l * cos(A);
@@ -159,42 +159,37 @@ void drawTree(Vector3 &pos, Vector3 dir, double len, int depth) {
 struct Line {
     Vector3 start, end;
     Line(Vector3 s, Vector3 e) : start(s), end(e) {}
+
+    void draw() {
+        glBegin(GL_LINES);
+        glVertex3d(start.x, start.y, start.z);
+        glVertex3d(end.x, end.y, end.z);
+        glEnd();
+    }
 };
 
-void drawDragonCurve(list<Line> &lines, int gen) {
+void drawDragonCurve(const vector<Line> &lines, int gen) {
     if (!gen) {
-        glBegin(GL_LINES);
-
-        list<Line>::iterator it;
-        for (it = lines.begin(); it != lines.end(); it++) {
-            Line line = *it;
-            glVertex3d(line.start.x, line.start.y, line.start.z);
-            glVertex3d(line.end.x, line.end.y, line.end.z);
-        }
-
-        glEnd();
+        for (auto line : lines)
+            line.draw();
         return;
     }
 
-    list<Line> new_lines;
-    list<Line>::iterator it;
-    int i;
-    for (i = 0, it = lines.begin(); it != lines.end(); it++, i++) {
-        Line line       = *it;
+    int sign = -1; // alternates the left-right rotation
+    vector<Line> new_lines;
+    for (auto line : lines) {
         Vector3 dir     = line.end - line.start;
-        int sign        = i % 2 ? -1 : 1; // alternates the left-right rotation
-        dir             = dir.rotate(-45 * sign, Vector3(0, 0, 1));
+        dir             = dir.rotate(45 * sign, Vector3(0, 0, 1));
+        sign            = -sign; // flips sign
         Vector3 new_end = line.start + dir / sqrt(2);
-        Line new_line   = Line(line.start, new_end);
 
         // line 1: start at prev start ends at new end
-        new_lines.push_back(new_line);
+        new_lines.emplace_back(line.start, new_end);
 
         // line 2: start at new end ends at prev end
-        new_lines.push_back(Line(new_end, line.end));
+        new_lines.emplace_back(new_end, line.end);
     }
-    lines = new_lines;
-    drawDragonCurve(lines, gen - 1);
+    drawDragonCurve(new_lines, gen - 1);
 }
 
 void draw() {
@@ -214,11 +209,12 @@ void draw() {
 
     // drawTree(pos, dir, .5, MAX(gen++, 0) % 20);
 
-    list<Line> lines;
+    vector<Line> lines;
     Vector3 start(-.5, .3, 0);
     Vector3 end(.5, .3, 0);
     lines.push_back(Line(start, end)); // initial line
-    drawDragonCurve(lines, MAX(gen++, 0) % 20);
+    drawDragonCurve(lines, MAX(gen, 0) % 20);
+    gen++;
 
     glutSwapBuffers(); // Send the 3D scene to the screen
 }
