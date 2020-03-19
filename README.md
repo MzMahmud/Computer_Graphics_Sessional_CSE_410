@@ -8,23 +8,25 @@ Fully Controllable Camera,Sphere to/from Cube,Wheel
 ---------------------------------------------------
 1. **Fully Controllable Camera**
     Key map for different operation was implemented using math and raw OpenGL library.
-    up arrow - move forward
-    down arrow - move backward
-    right arrow - move right
-    left arrow - move left
-    PgUp - move up
-    PgDn - move down
-    1 - rotate/look left
-    2 - rotate/look right
-    3 - look up
-    4 - look down
-    5 - tilt clockwise
-    6 - tilt counterclockwise
+    
+    * up arrow - move forward
+    * down arrow - move backward
+    * right arrow - move right
+    * left arrow - move left
+    * PgUp - move up
+    * PgDn - move down
+    * 1 - rotate/look left
+    * 2 - rotate/look right
+    * 3 - look up
+    * 4 - look down
+    * 5 - tilt clockwise
+    * 6 - tilt counterclockwise
 
 2. **Sphere to/from Cube**
     Key map for different operation was implemented using math and raw OpenGL library.
-    Home - cube to sphere
-    End - sphere to cube
+
+    * Home - cube to sphere
+    * End - sphere to cube
     
     Drawn one eighth of a sphere, one fourth of a cylinder and a square once. Used transformations (translation, rotation etc.) to put them in the right places. And implemented the operations.
 
@@ -34,10 +36,11 @@ Fully Controllable Camera,Sphere to/from Cube,Wheel
 
 3. **Wheel**
     Key map for different operation was implemented using math and raw OpenGL library.
-w - move forward
-s - move backward
-a - rotate left
-d - rotate right
+
+* w - move forward
+* s - move backward
+* a - rotate left
+* d - rotate right
 
 *Wheel Demo*
 ![Wheel Demo](https://raw.githubusercontent.com/MzMahmud/CSE410-ComputerGraphicsSessional/master/Assignment%201/wheel.PNG)
@@ -67,7 +70,8 @@ Given a set of objects(**sphere**,**pyramid** and a **chess board floor**),a set
 
 Fractals
 --------
-This was not actually part of any assignment. I was loved the beauty of fractals so implemented a few fractals in OpenGL
+This was not actually part of any assignment. I was loved the beauty of fractals so implemented a few fractals in OpenGL.
+
 * Fractal Tree
 * Koch Snowflake
 * Dragon Curve
